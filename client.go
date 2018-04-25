@@ -14,7 +14,7 @@ import (
 
 type Client interface {
 	Call(methodName string, parameters ...interface{}) (Decoder, error)
-	Notify(methodName string, parameters ...interface{})
+	Notify(methodName string, parameters ...interface{}) error
 }
 
 type ClientImpl struct {
@@ -78,12 +78,11 @@ func (c *ClientImpl) Call(methodName string, parameters ...interface{}) (Decoder
 	return NewDecoder(response.Result)
 }
 
-func (c *ClientImpl) Notify(methodName string, parameters ...interface{}) {
+func (c *ClientImpl) Notify(methodName string, parameters ...interface{}) error {
 	conn, err := c.GetConnection()
 
 	if err != nil {
-		log.Printf("%v\n", err)
-		return
+		return err
 	}
 
 	defer conn.Close()
@@ -94,15 +93,12 @@ func (c *ClientImpl) Notify(methodName string, parameters ...interface{}) {
 		parameters)
 
 	if err != nil {
-		log.Printf("%v\n", err)
-		return
+		return err
 	}
 
 	_, err = conn.Write(buffer.Bytes())
 
-	if err != nil {
-		log.Printf("%v\n", err)
-	}
+	return err
 }
 
 func (c *ClientImpl) GetConnection() (net.Conn, error) {
