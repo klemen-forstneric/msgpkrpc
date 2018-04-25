@@ -134,14 +134,14 @@ func (s *ServerImpl) HandleConnection(conn net.Conn) {
 		respond = EmptyRespond
 	}
 
-	ProcessRequest(conn, request, respond)
+	s.ProcessRequest(conn, request, respond)
 }
 
 func (s *ServerImpl) ProcessRequest(conn net.Conn, request Request, respond RespondFunction) {
 	handler, exists := s.handlers[request.MethodName]
 
 	if !exists {
-		err = fmt.Errorf("No handler exists for method %s", request.MethodName)
+		err := fmt.Errorf("No handler exists for method %s", request.MethodName)
 		log.Printf("%v\n", err)
 
 		respond(conn, request.MessageId, err, nil)
@@ -149,7 +149,7 @@ func (s *ServerImpl) ProcessRequest(conn net.Conn, request Request, respond Resp
 	}
 
 	if len(handler.Parameters) != len(request.Parameters) {
-		err = fmt.Errorf(
+		err := fmt.Errorf(
 			"Parameter count for %s doesn't match. Should be %d, but is %d",
 			request.MethodName,
 			len(handler.Parameters),

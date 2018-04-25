@@ -110,7 +110,7 @@ func (c *ClientImpl) EncodeRequest(requestType int, methodName string, parameter
 	var buffer bytes.Buffer
 	encoder := msgpack.NewEncoder(&buffer)
 
-	err = encoder.Encode(&Request{
+	err := encoder.Encode(&Request{
 		Type:       requestType,
 		MessageId:  1,
 		MethodName: methodName,
