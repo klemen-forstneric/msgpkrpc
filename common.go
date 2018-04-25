@@ -11,6 +11,7 @@ const (
 const (
 	RequestMessageType  = 0
 	ResponseMessageType = 1
+	NotificationMessageType = 2
 )
 
 type Parameters []interface{}

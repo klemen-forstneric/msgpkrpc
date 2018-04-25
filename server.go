@@ -14,6 +14,8 @@ import (
 	"reflect"
 )
 
+type RespondFunction func(conn net.Conn, messageId int, rpcError error, rpcResult interface{})
+
 type Function interface{}
 
 type Handler struct {
@@ -32,6 +34,38 @@ type FunctionBinder interface {
 
 type ServerImpl struct {
 	handlers map[string]Handler
+}
+
+func Respond(conn net.Conn, messageId int, rpcError error, rpcResult interface{}) {
+	var buffer bytes.Buffer
+	encoder := msgpack.NewEncoder(&buffer)
+
+	var rpcErrorEncoded *Error = nil
+	if rpcError != nil {
+		rpcErrorEncoded = &Error{
+			Description: rpcError.Error(),
+			Code:        ""}
+	}
+
+	err := encoder.Encode(&Response{
+		Type:      ResponseMessageType,
+		MessageId: messageId,
+		Error:     rpcErrorEncoded,
+		Result:    rpcResult})
+
+	if err != nil {
+		log.Printf("Failed to encode RPC response (%v)\n", err)
+		return
+	}
+
+	_, err = conn.Write(buffer.Bytes())
+
+	if err != nil {
+		log.Printf("Failed to send RPC response(%v)\n", err)
+	}
+}
+
+func EmptyRespond(conn net.Conn, messageId int, rpcError error, rpcResult interface{}) {
 }
 
 func NewServer(functionBinders []FunctionBinder) Server {
@@ -77,11 +111,11 @@ func (s *ServerImpl) Run(port int) error {
 			return err
 		}
 
-		go s.ProcessRequest(conn)
+		go s.HandleConnection(conn)
 	}
 }
 
-func (s *ServerImpl) ProcessRequest(conn net.Conn) {
+func (s *ServerImpl) HandleConnection(conn net.Conn) {
 	defer conn.Close()
 
 	request, err := s.ParseRequest(conn)
@@ -91,13 +125,26 @@ func (s *ServerImpl) ProcessRequest(conn net.Conn) {
 		return
 	}
 
+	var respond RespondFunction
+
+	switch request.Type {
+	case RequestMessageType:
+		respond = Respond
+	case NotificationMessageType:
+		respond = EmptyRespond
+	}
+
+	ProcessRequest(conn, request, respond)
+}
+
+func (s *ServerImpl) ProcessRequest(conn net.Conn, request Request, respond RespondFunction) {
 	handler, exists := s.handlers[request.MethodName]
 
 	if !exists {
 		err = fmt.Errorf("No handler exists for method %s", request.MethodName)
 		log.Printf("%v\n", err)
 
-		Respond(conn, request.MessageId, err, nil)
+		respond(conn, request.MessageId, err, nil)
 		return
 	}
 
@@ -109,7 +156,7 @@ func (s *ServerImpl) ProcessRequest(conn net.Conn) {
 			len(request.Parameters))
 		log.Printf("%v\n", err)
 
-		Respond(conn, request.MessageId, err, nil)
+		respond(conn, request.MessageId, err, nil)
 		return
 	}
 
@@ -117,7 +164,7 @@ func (s *ServerImpl) ProcessRequest(conn net.Conn) {
 
 	if err != nil {
 		log.Printf("%v\n", err)
-		Respond(conn, request.MessageId, err, nil)
+		respond(conn, request.MessageId, err, nil)
 		return
 	}
 
@@ -127,17 +174,18 @@ func (s *ServerImpl) ProcessRequest(conn net.Conn) {
 	returnValues, err := s.DecodeFunctionResult(values)
 
 	if err != nil {
-		Respond(conn, request.MessageId, err, nil)
+		log.Printf("%v\n", err)
+		respond(conn, request.MessageId, err, nil)
 		return
 	}
 
 	switch len(returnValues) {
 	case 0:
-		Respond(conn, request.MessageId, nil, nil)
+		respond(conn, request.MessageId, nil, nil)
 	case 1:
-		Respond(conn, request.MessageId, nil, returnValues[0])
+		respond(conn, request.MessageId, nil, returnValues[0])
 	default:
-		Respond(conn, request.MessageId, nil, returnValues)
+		respond(conn, request.MessageId, nil, returnValues)
 	}
 }
 
@@ -247,33 +295,4 @@ func (s *ServerImpl) ParseError(functionResult []reflect.Value) (error, bool) {
 	}
 
 	return lastFunctionResult.Interface().(error), true
-}
-
-func Respond(conn net.Conn, messageId int, rpcError error, rpcResult interface{}) {
-	var buffer bytes.Buffer
-	encoder := msgpack.NewEncoder(&buffer)
-
-	var rpcErrorEncoded *Error = nil
-	if rpcError != nil {
-		rpcErrorEncoded = &Error{
-			Description: rpcError.Error(),
-			Code:        ""}
-	}
-
-	err := encoder.Encode(&Response{
-		Type:      ResponseMessageType,
-		MessageId: messageId,
-		Error:     rpcErrorEncoded,
-		Result:    rpcResult})
-
-	if err != nil {
-		log.Printf("Failed to encode RPC response (%v)\n", err)
-		return
-	}
-
-	_, err = conn.Write(buffer.Bytes())
-
-	if err != nil {
-		log.Printf("Failed to send RPC response(%v)\n", err)
-	}
 }

@@ -14,6 +14,7 @@ import (
 
 type Client interface {
 	Call(methodName string, parameters ...interface{}) (Decoder, error)
+	Notify(methodName string, parameters ...interface{})
 }
 
 type ClientImpl struct {
@@ -37,8 +38,7 @@ func NewClientFactory() ClientFactory {
 }
 
 func (c *ClientImpl) Call(methodName string, parameters ...interface{}) (Decoder, error) {
-	fullAddress := fmt.Sprintf("%s:%d", c.address, c.port)
-	conn, err := net.Dial(RpcConnectionType, fullAddress)
+	conn, err := c.GetConnection()
 
 	if err != nil {
 		return nil, err
@@ -46,14 +46,10 @@ func (c *ClientImpl) Call(methodName string, parameters ...interface{}) (Decoder
 
 	defer conn.Close()
 
-	var buffer bytes.Buffer
-	encoder := msgpack.NewEncoder(&buffer)
-
-	err = encoder.Encode(&Request{
-		Type:       RequestMessageType,
-		MessageId:  1,
-		MethodName: methodName,
-		Parameters: parameters})
+	buffer, err := c.EncodeRequest(
+		RequestMessageType,
+		methodName,
+		parameters)
 
 	if err != nil {
 		return nil, err
@@ -80,6 +76,51 @@ func (c *ClientImpl) Call(methodName string, parameters ...interface{}) (Decoder
 	}
 
 	return NewDecoder(response.Result)
+}
+
+func (c *ClientImpl) Notify(methodName string, parameters ...interface{}) {
+	conn, err := c.GetConnection()
+
+	if err != nil {
+		log.Printf("%v\n", err)
+		return
+	}
+
+	defer conn.Close()
+
+	buffer, err := c.EncodeRequest(
+		NotificationMessageType,
+		methodName,
+		parameters)
+
+	if err != nil {
+		log.Printf("%v\n", err)
+		return
+	}
+
+	_, err = conn.Write(buffer.Bytes())
+
+	if err != nil {
+		log.Printf("%v\n", err)
+	}
+}
+
+func (c *ClientImpl) GetConnection() (net.Conn, error) {
+	fullAddress := fmt.Sprintf("%s:%d", c.address, c.port)
+	return net.Dial(RpcConnectionType, fullAddress)
+}
+
+func (c *ClientImpl) EncodeRequest(requestType int, methodName string, parameters ...interface{}) (bytes.Buffer, error) {
+	var buffer bytes.Buffer
+	encoder := msgpack.NewEncoder(&buffer)
+
+	err = encoder.Encode(&Request{
+		Type:       requestType,
+		MessageId:  1,
+		MethodName: methodName,
+		Parameters: parameters})
+
+	return buffer, err
 }
 
 func (c *ClientFactoryImpl) Create(address string, port int) Client {
