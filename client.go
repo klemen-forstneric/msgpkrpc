@@ -46,10 +46,14 @@ func (c *ClientImpl) Call(methodName string, parameters ...interface{}) (Decoder
 
 	defer conn.Close()
 
-	buffer, err := c.EncodeRequest(
-		RequestMessageType,
-		methodName,
-		parameters)
+	var buffer bytes.Buffer
+	encoder := msgpack.NewEncoder(&buffer)
+
+	err = encoder.Encode(&Request{
+		Type:       RequestMessageType,
+		MessageId:  1,
+		MethodName: methodName,
+		Parameters: parameters})
 
 	if err != nil {
 		return nil, err
@@ -87,10 +91,14 @@ func (c *ClientImpl) Notify(methodName string, parameters ...interface{}) error 
 
 	defer conn.Close()
 
-	buffer, err := c.EncodeRequest(
-		NotificationMessageType,
-		methodName,
-		parameters)
+	var buffer bytes.Buffer
+	encoder := msgpack.NewEncoder(&buffer)
+
+	err = encoder.Encode(&Request{
+		Type:       NotificationMessageType,
+		MessageId:  1,
+		MethodName: methodName,
+		Parameters: parameters})
 
 	if err != nil {
 		return err
@@ -104,19 +112,6 @@ func (c *ClientImpl) Notify(methodName string, parameters ...interface{}) error 
 func (c *ClientImpl) GetConnection() (net.Conn, error) {
 	fullAddress := fmt.Sprintf("%s:%d", c.address, c.port)
 	return net.Dial(RpcConnectionType, fullAddress)
-}
-
-func (c *ClientImpl) EncodeRequest(requestType int, methodName string, parameters ...interface{}) (bytes.Buffer, error) {
-	var buffer bytes.Buffer
-	encoder := msgpack.NewEncoder(&buffer)
-
-	err := encoder.Encode(&Request{
-		Type:       requestType,
-		MessageId:  1,
-		MethodName: methodName,
-		Parameters: parameters})
-
-	return buffer, err
 }
 
 func (c *ClientFactoryImpl) Create(address string, port int) Client {
