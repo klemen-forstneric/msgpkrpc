@@ -28,7 +28,7 @@ type Server interface {
 	Run() error
 }
 
-type FunctionBinder interface {
+type Binder interface {
 	Bind(s Server)
 }
 
@@ -69,12 +69,18 @@ func Respond(conn net.Conn, messageId int, rpcError error, rpcResult interface{}
 func EmptyRespond(conn net.Conn, messageId int, rpcError error, rpcResult interface{}) {
 }
 
-func NewServer(port int, functionBinders []FunctionBinder) Server {
+func NewServer(port int) Server {
 	server := &ServerImpl{
 		port:     port,
 		handlers: make(map[string]Handler)}
 
-	for _, b := range functionBinders {
+	return server
+}
+
+func NewServerWithBinders(port int, binders []Binder) Server {
+	server := NewServer(port)
+
+	for _, b := range binders {
 		b.Bind(server)
 	}
 
