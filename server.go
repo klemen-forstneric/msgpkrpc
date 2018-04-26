@@ -25,7 +25,7 @@ type Handler struct {
 
 type Server interface {
 	Bind(name string, function Function)
-	Run(port int) error
+	Run() error
 }
 
 type FunctionBinder interface {
@@ -33,6 +33,7 @@ type FunctionBinder interface {
 }
 
 type ServerImpl struct {
+	port     int
 	handlers map[string]Handler
 }
 
@@ -68,8 +69,10 @@ func Respond(conn net.Conn, messageId int, rpcError error, rpcResult interface{}
 func EmptyRespond(conn net.Conn, messageId int, rpcError error, rpcResult interface{}) {
 }
 
-func NewServer(functionBinders []FunctionBinder) Server {
-	server := &ServerImpl{handlers: make(map[string]Handler)}
+func NewServer(port int, functionBinders []FunctionBinder) Server {
+	server := &ServerImpl{
+		port:     port,
+		handlers: make(map[string]Handler)}
 
 	for _, b := range functionBinders {
 		b.Bind(server)
@@ -97,8 +100,8 @@ func (s *ServerImpl) Bind(name string, function Function) {
 		Parameters: parameters}
 }
 
-func (s *ServerImpl) Run(port int) error {
-	ln, err := net.Listen(RpcConnectionType, fmt.Sprintf(":%d", port))
+func (s *ServerImpl) Run() error {
+	ln, err := net.Listen(RpcConnectionType, fmt.Sprintf(":%d", s.port))
 
 	if err != nil {
 		return err
