@@ -5,13 +5,13 @@
 package rpc
 
 const (
-	RpcConnectionType = "tcp"
+	rpcConnectionType = "tcp"
 )
 
 const (
-	RequestMessageType  = 0
-	ResponseMessageType = 1
-	NotificationMessageType = 2
+	requestMessageType  = 0
+	responseMessageType = 1
+	notificationMessageType = 2
 )
 
 type Parameters []interface{}

@@ -49,7 +49,7 @@ func Respond(conn net.Conn, messageId int, rpcError error, rpcResult interface{}
 	}
 
 	err := encoder.Encode(&Response{
-		Type:      ResponseMessageType,
+		Type:      responseMessageType,
 		MessageId: messageId,
 		Error:     rpcErrorEncoded,
 		Result:    rpcResult})
@@ -107,7 +107,7 @@ func (s *serverImpl) Bind(name string, function Function) {
 }
 
 func (s *serverImpl) Run() error {
-	ln, err := net.Listen(RpcConnectionType, fmt.Sprintf(":%d", s.port))
+	ln, err := net.Listen(rpcConnectionType, fmt.Sprintf(":%d", s.port))
 
 	if err != nil {
 		return err
@@ -137,9 +137,9 @@ func (s *serverImpl) handleConnection(conn net.Conn) {
 	var respond RespondFunction
 
 	switch request.Type {
-	case RequestMessageType:
+	case requestMessageType:
 		respond = Respond
-	case NotificationMessageType:
+	case notificationMessageType:
 		respond = EmptyRespond
 	}
 

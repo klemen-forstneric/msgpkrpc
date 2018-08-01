@@ -38,7 +38,7 @@ func NewClientFactory() ClientFactory {
 }
 
 func (c *clientImpl) Call(methodName string, parameters ...interface{}) (Decoder, error) {
-	conn, err := c.GetConnection()
+	conn, err := c.getConnection()
 
 	if err != nil {
 		return nil, err
@@ -50,7 +50,7 @@ func (c *clientImpl) Call(methodName string, parameters ...interface{}) (Decoder
 	encoder := msgpack.NewEncoder(&buffer)
 
 	err = encoder.Encode(&Request{
-		Type:       RequestMessageType,
+		Type:       requestMessageType,
 		MessageId:  1,
 		MethodName: methodName,
 		Parameters: parameters})
@@ -95,7 +95,7 @@ func (c *clientImpl) Notify(methodName string, parameters ...interface{}) error 
 	encoder := msgpack.NewEncoder(&buffer)
 
 	err = encoder.Encode(&Request{
-		Type:       NotificationMessageType,
+		Type:       notificationMessageType,
 		MessageId:  1,
 		MethodName: methodName,
 		Parameters: parameters})
@@ -111,7 +111,7 @@ func (c *clientImpl) Notify(methodName string, parameters ...interface{}) error 
 
 func (c *clientImpl) getConnection() (net.Conn, error) {
 	fullAddress := fmt.Sprintf("%s:%d", c.address, c.port)
-	return net.Dial(RpcConnectionType, fullAddress)
+	return net.Dial(rpcConnectionType, fullAddress)
 }
 
 func (c *clientFactoryImpl) Create(address string, port int) Client {
