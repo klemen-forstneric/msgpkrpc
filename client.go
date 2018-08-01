@@ -17,27 +17,27 @@ type Client interface {
 	Notify(methodName string, parameters ...interface{}) error
 }
 
-type ClientImpl struct {
+type clientImpl struct {
 	address string
 	port    int
 }
 
 func NewClient(address string, port int) Client {
-	return &ClientImpl{address: address, port: port}
+	return &clientImpl{address: address, port: port}
 }
 
 type ClientFactory interface {
 	Create(address string, port int) Client
 }
 
-type ClientFactoryImpl struct {
+type clientFactoryImpl struct {
 }
 
 func NewClientFactory() ClientFactory {
-	return &ClientFactoryImpl{}
+	return &clientFactoryImpl{}
 }
 
-func (c *ClientImpl) Call(methodName string, parameters ...interface{}) (Decoder, error) {
+func (c *clientImpl) Call(methodName string, parameters ...interface{}) (Decoder, error) {
 	conn, err := c.GetConnection()
 
 	if err != nil {
@@ -82,8 +82,8 @@ func (c *ClientImpl) Call(methodName string, parameters ...interface{}) (Decoder
 	return NewDecoder(response.Result)
 }
 
-func (c *ClientImpl) Notify(methodName string, parameters ...interface{}) error {
-	conn, err := c.GetConnection()
+func (c *clientImpl) Notify(methodName string, parameters ...interface{}) error {
+	conn, err := c.getConnection()
 
 	if err != nil {
 		return err
@@ -109,11 +109,11 @@ func (c *ClientImpl) Notify(methodName string, parameters ...interface{}) error 
 	return err
 }
 
-func (c *ClientImpl) GetConnection() (net.Conn, error) {
+func (c *clientImpl) getConnection() (net.Conn, error) {
 	fullAddress := fmt.Sprintf("%s:%d", c.address, c.port)
 	return net.Dial(RpcConnectionType, fullAddress)
 }
 
-func (c *ClientFactoryImpl) Create(address string, port int) Client {
+func (c *clientFactoryImpl) Create(address string, port int) Client {
 	return NewClient(address, port)
 }

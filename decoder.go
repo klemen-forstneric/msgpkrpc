@@ -14,14 +14,14 @@ type Decoder interface {
 	IsValid() bool
 }
 
-type DecoderImpl struct {
+type decoderImpl struct {
 	decoder *msgpack.Decoder
 	valid   bool
 }
 
 func NewDecoder(r interface{}) (Decoder, error) {
 	if r == nil {
-		return &DecoderImpl{decoder: nil, valid: false}, nil
+		return &decoderImpl{decoder: nil, valid: false}, nil
 	}
 
 	var buffer bytes.Buffer
@@ -34,13 +34,13 @@ func NewDecoder(r interface{}) (Decoder, error) {
 	}
 
 	decoder := msgpack.NewDecoder(&buffer)
-	return &DecoderImpl{decoder: decoder, valid: true}, nil
+	return &decoderImpl{decoder: decoder, valid: true}, nil
 }
 
-func (r *DecoderImpl) Decode(value interface{}) error {
+func (r *decoderImpl) Decode(value interface{}) error {
 	return r.decoder.Decode(value)
 }
 
-func (r *DecoderImpl) IsValid() bool {
+func (r *decoderImpl) IsValid() bool {
 	return r.valid
 }

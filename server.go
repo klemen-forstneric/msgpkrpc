@@ -32,7 +32,7 @@ type Binder interface {
 	Bind(s Server)
 }
 
-type ServerImpl struct {
+type serverImpl struct {
 	port     int
 	handlers map[string]Handler
 }
@@ -70,7 +70,7 @@ func EmptyRespond(conn net.Conn, messageId int, rpcError error, rpcResult interf
 }
 
 func NewServer(port int) Server {
-	server := &ServerImpl{
+	server := &serverImpl{
 		port:     port,
 		handlers: make(map[string]Handler)}
 
@@ -87,7 +87,7 @@ func NewServerWithBinders(port int, binders []Binder) Server {
 	return server
 }
 
-func (s *ServerImpl) Bind(name string, function Function) {
+func (s *serverImpl) Bind(name string, function Function) {
 	if _, exists := s.handlers[name]; exists {
 		log.Printf("A function is already bound to name %s! Rebinding..\n", name)
 	}
@@ -106,7 +106,7 @@ func (s *ServerImpl) Bind(name string, function Function) {
 		Parameters: parameters}
 }
 
-func (s *ServerImpl) Run() error {
+func (s *serverImpl) Run() error {
 	ln, err := net.Listen(RpcConnectionType, fmt.Sprintf(":%d", s.port))
 
 	if err != nil {
@@ -120,11 +120,11 @@ func (s *ServerImpl) Run() error {
 			return err
 		}
 
-		go s.HandleConnection(conn)
+		go s.handleConnection(conn)
 	}
 }
 
-func (s *ServerImpl) HandleConnection(conn net.Conn) {
+func (s *serverImpl) handleConnection(conn net.Conn) {
 	defer conn.Close()
 
 	request, err := s.ParseRequest(conn)
@@ -143,10 +143,10 @@ func (s *ServerImpl) HandleConnection(conn net.Conn) {
 		respond = EmptyRespond
 	}
 
-	s.ProcessRequest(conn, request, respond)
+	s.processRequest(conn, request, respond)
 }
 
-func (s *ServerImpl) ProcessRequest(conn net.Conn, request Request, respond RespondFunction) {
+func (s *serverImpl) processRequest(conn net.Conn, request Request, respond RespondFunction) {
 	handler, exists := s.handlers[request.MethodName]
 
 	if !exists {
@@ -198,7 +198,7 @@ func (s *ServerImpl) ProcessRequest(conn net.Conn, request Request, respond Resp
 	}
 }
 
-func (s *ServerImpl) ParseRequest(conn net.Conn) (Request, error) {
+func (s *serverImpl) ParseRequest(conn net.Conn) (Request, error) {
 	requestReader := bufio.NewReader(conn)
 	decoder := msgpack.NewDecoder(requestReader)
 
@@ -212,7 +212,7 @@ func (s *ServerImpl) ParseRequest(conn net.Conn) (Request, error) {
 	return request, nil
 }
 
-func (s *ServerImpl) DecodeParameters(parameters Parameters, handlerParameters []reflect.Type) ([]reflect.Value, error) {
+func (s *serverImpl) DecodeParameters(parameters Parameters, handlerParameters []reflect.Type) ([]reflect.Value, error) {
 	decodedParameters := make([]reflect.Value, len(parameters))
 
 	for i, parameter := range parameters {
@@ -246,7 +246,7 @@ func (s *ServerImpl) DecodeParameters(parameters Parameters, handlerParameters [
 	return decodedParameters, nil
 }
 
-func (s *ServerImpl) DecodeFunctionResult(functionResult []reflect.Value) ([]interface{}, error) {
+func (s *serverImpl) DecodeFunctionResult(functionResult []reflect.Value) ([]interface{}, error) {
 	numFunctionResults := len(functionResult)
 
 	if numFunctionResults == 0 {
@@ -285,7 +285,7 @@ func (s *ServerImpl) DecodeFunctionResult(functionResult []reflect.Value) ([]int
 	return returnValues, nil
 }
 
-func (s *ServerImpl) ParseError(functionResult []reflect.Value) (error, bool) {
+func (s *serverImpl) ParseError(functionResult []reflect.Value) (error, bool) {
 	numFunctionResults := len(functionResult)
 	lastFunctionResult := functionResult[numFunctionResults-1]
 
